@@ -1,6 +1,8 @@
 package com.minpin.scanevent;
 
 import com.minpin.scanevent.model.CartonEvt;
+import com.minpin.scanevent.model.CartonEvtExt;
+import com.minpin.scanevent.services.CartonEvtExtProcessor;
 import com.minpin.scanevent.services.CartonEvtFieldSetMapper;
 import com.minpin.scanevent.services.CartonEvtPreparedStatemeSetter;
 import lombok.extern.slf4j.Slf4j;
@@ -9,6 +11,7 @@ import org.springframework.batch.core.Step;
 import org.springframework.batch.core.configuration.annotation.EnableBatchProcessing;
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
+import org.springframework.batch.item.ItemProcessor;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ItemWriter;
 import org.springframework.batch.item.database.builder.JdbcBatchItemWriterBuilder;
@@ -26,7 +29,7 @@ import javax.sql.DataSource;
 @EnableBatchProcessing
 @Slf4j
 public class ScanEventApplication {
-	private static final String INSERT_CARTONEVT_SQL = "insert into `mydb`.`cartonEvt` (label, courier, status, date) values (?, ?, ?, ?)";
+	private static final String INSERT_CARTONEVT_SQL = "insert into `mydb`.`cartonEvtExt` (label, courier, status, date, isFinalEvent) values (?, ?, ?, ?, ?)";
 	private static String[] tokens = new String[] {"Label","Courier","Status","Date"};
 
 	@Autowired
@@ -56,8 +59,13 @@ public class ScanEventApplication {
 	}
 
 	@Bean
-	public ItemWriter<? super CartonEvt> scanEventWriter() {
-		return new JdbcBatchItemWriterBuilder<CartonEvt>()
+	public ItemProcessor<CartonEvt, CartonEvtExt> scanEventProcessor() {
+		return new CartonEvtExtProcessor();
+	}
+
+	@Bean
+	public ItemWriter<CartonEvtExt> scanEventWriter() {
+		return new JdbcBatchItemWriterBuilder<CartonEvtExt>()
 				.dataSource(dataSource)
 				.sql(INSERT_CARTONEVT_SQL)
 				.itemPreparedStatementSetter(new CartonEvtPreparedStatemeSetter())
@@ -67,8 +75,9 @@ public class ScanEventApplication {
 	@Bean
 	public Step scanEventStep() {
 		return this.stepBuilderFactory.get("scanEventStep")
-				.<CartonEvt, CartonEvt>chunk(3)
+				.<CartonEvt, CartonEvtExt>chunk(3)
 				.reader(scanEventReader())
+				.processor(scanEventProcessor())
 				.writer(scanEventWriter())
 				.build();
 	}
