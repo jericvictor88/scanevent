@@ -1,0 +1,4 @@
+Label,Courier,Status,Date
+DE101,DELIVERE,Picked Up,2019-01-01
+DE102,DELIVERE,In Transit,2019-01-02
+DE103,DELIVERE,Delivered,2019-01-03
